@@ -1,10 +1,18 @@
 #include <hge.h>
+#include <hgerect.h>
 
 HGE *hge = 0;
 
-void Initialize() {
-	
-}
+hgeRect positiveBoxes[50];
+hgeRect negativeBoxes[50];
+hgeRect playerBoxes[50];
+
+struct BoxEvent {
+	float x1;
+	float x2;
+	float y;
+	bool isTop;
+};
 
 void BuildLevel() {
 	
@@ -36,7 +44,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	hge->System_SetState(HGE_HIDEMOUSE, false);
 
 	if(hge->System_Initiate()) {
-		Initialize();
 		BuildLevel();
 		hge->System_Start();
 	} else {	
