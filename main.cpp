@@ -2,11 +2,26 @@
 #include <hgerect.h>
 #include <stdlib.h>
 #include <time.h>
+#include <algorithm>
+
+using namespace std;
 
 const int ARRAY_SIZE = 50;
+const int EVENT_ARRAY_SIZE = 100;
 const int GAME_SIZE = 400;
 const int SPAWN_SIZE = 150;
 const int SPAWN_BORDER = 125;
+
+struct BoxEvent {
+	float x1;
+	float x2;
+	float y;
+	bool isTop;
+};
+
+struct CompareBoxEvents {
+	bool operator() (const BoxEvent & lhs, const BoxEvent & rhs) { return lhs.y < rhs.y; }
+};
 
 HGE *hge = 0;
 
@@ -20,16 +35,12 @@ hgeQuad pBoxes[ARRAY_SIZE];
 hgeQuad nBoxes[ARRAY_SIZE];
 hgeQuad playBoxes[ARRAY_SIZE];
 
+BoxEvent bEvents[EVENT_ARRAY_SIZE];
+
 int numPBox = 0;
 int numNBox = 0;
 int numPlayBox = 0;
-
-struct BoxEvent {
-	float x1;
-	float x2;
-	float y;
-	bool isTop;
-};
+int numBEvents = 0;
 
 // Initialize Game for initial load
 void Initialize() {
@@ -37,6 +48,7 @@ void Initialize() {
 	numPBox = 0;
 	numNBox = 0;
 	numPlayBox = 0;
+	numBEvents = 0;
 	
 	for(int i = 0; i < ARRAY_SIZE; i++) {
 		for(int j = 0; j < 4; j++) {
@@ -70,6 +82,7 @@ void ReInitialize() {
 	numPBox = 0;
 	numNBox = 0;
 	numPlayBox = 0;
+	numBEvents = 0;
 	
 	for(int i = 0; i < ARRAY_SIZE; i++) {
 		for(int j = 0; j < 4; j++) {
@@ -124,6 +137,24 @@ void BuildPositiveBoxes() {
 	}
 }
 
+void BuildBoxEvents() {
+	for(int i = 0; i < numPBox; i++) {
+		bEvents[numBEvents].x1 = pBoxes[i].v[0].x;
+		bEvents[numBEvents].x2 = pBoxes[i].v[1].x;
+		bEvents[numBEvents].y = pBoxes[i].v[0].y;
+		bEvents[numBEvents].isTop = true;
+		
+		bEvents[numBEvents + 1].x1 = pBoxes[i].v[0].x;
+		bEvents[numBEvents + 1].x2 = pBoxes[i].v[1].x;
+		bEvents[numBEvents + 1].y = pBoxes[i].v[2].y;
+		bEvents[numBEvents + 1].isTop = false;
+		
+		numBEvents += 2;
+	}
+	
+	std::sort(bEvents, bEvents + numBEvents, CompareBoxEvents());
+}
+
 void BuildNegativeBoxes() {
 	
 }
@@ -131,6 +162,7 @@ void BuildNegativeBoxes() {
 void BuildLevel() {
 	Initialize();
 	BuildPositiveBoxes();
+	BuildBoxEvents();
 	BuildNegativeBoxes();
 	canClick = true;
 }
