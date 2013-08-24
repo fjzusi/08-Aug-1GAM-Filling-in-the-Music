@@ -156,7 +156,9 @@ void BuildBoxEvents() {
 }
 
 void BuildNegativeBoxes() {
-	
+	int curY = 0;
+	int curEvent = 0;
+	//TODO BuildNegativeBoxes()
 }
 
 void BuildLevel() {
