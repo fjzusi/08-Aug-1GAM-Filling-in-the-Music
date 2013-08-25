@@ -162,14 +162,17 @@ void BuildBoxEvents() {
 	std::sort(bEvents, bEvents + numBEvents, CompareBoxEvents());
 }
 
-bool CheckBoxAndEvent(NegativeBox* box, BoxEvent* event) {
-	//TODO Return whether the box intersects with the event
+bool CheckBoxAndEvent(NegativeBox nBox, BoxEvent event) {
+	if(nBox.box.v[2].y == event.y) {
+		return (nBox.box.v[3].x <= event.x1 && nBox.box.v[2].x >= event.x1) ||
+			(nBox.box.v[3].x <= event.x2 && nBox.box.v[2].x >= event.x2);
+	}
+
 	return false;
 }
 
-bool CheckPoint(float px, float py, float rx1, float ry1, float rx2, float ry2, float rx3, float ry3, float rx4, float ry4) {
-	//TODO Return whether the point at px-py is contained within the rectangle
-	return false;
+bool CheckPoint(float px, float py, float leftX, float rightX, float topY, float bottomY) {
+	return px >= leftX && px <= rightX && py >= topY && py <= bottomY;
 }
 
 void BuildNegativeBoxes() {
@@ -191,7 +194,7 @@ void BuildNegativeBoxes() {
 		if(bEvents[curEvent].isTop) {
 			// Collided with the top of a positive box
 			for(int n = 0; n < numNBox; n++) {
-				if(nBoxes[n].active && CheckBoxAndEvent(&nBoxes[n], &bEvents[curEvent])) {
+				if(nBoxes[n].active && CheckBoxAndEvent(nBoxes[n], bEvents[curEvent])) {
 					bool createLeft = true;
 					bool createRight = true;
 					nBoxes[n].active = false;
@@ -200,11 +203,9 @@ void BuildNegativeBoxes() {
 					for(int j = 0; j < numPBox && createLeft; j++) {
 						if(j != bEvents[curEvent].pIndex &&
 							CheckPoint(
-								bEvents[curEvent.x1], bEvents[curEvent.y],
-								pBoxes[j].v[0].x, pBoxes[j].v[0].y,
-								pBoxes[j].v[1].x, pBoxes[j].v[1].y,
-								pBoxes[j].v[2].x, pBoxes[j].v[2].y,
-								pBoxes[j].v[3].x, pBoxes[j].v[3].y,)
+								bEvents[curEvent].x1, bEvents[curEvent].y,
+								pBoxes[j].v[0].x, pBoxes[j].v[1].x,
+								pBoxes[j].v[0].y, pBoxes[j].v[2].y)
 						) {
 							createLeft = false;
 						}
@@ -214,11 +215,9 @@ void BuildNegativeBoxes() {
 					for(int j = 0; j < numPBox && createRight; j++) {
 						if(j != bEvents[curEvent].pIndex &&
 							CheckPoint(
-								bEvents[curEvent.x2], bEvents[curEvent.y],
-								pBoxes[j].v[0].x, pBoxes[j].v[0].y,
-								pBoxes[j].v[1].x, pBoxes[j].v[1].y,
-								pBoxes[j].v[2].x, pBoxes[j].v[2].y,
-								pBoxes[j].v[3].x, pBoxes[j].v[3].y,)
+								bEvents[curEvent].x2, bEvents[curEvent].y,
+								pBoxes[j].v[0].x, pBoxes[j].v[1].x,
+								pBoxes[j].v[0].y, pBoxes[j].v[2].y)
 						) {
 							createRight = false;
 						}
@@ -227,16 +226,13 @@ void BuildNegativeBoxes() {
 					// Create a negative box on the left
 					if(createLeft) {
 						nBoxes[newNumNBox].box.v[0].x = nBoxes[n].box.v[0].x;
-						nBoxes[newNumNBox].box.v[0].y = curY;
-						
 						nBoxes[newNumNBox].box.v[1].x = bEvents[curEvent].x1;
-						nBoxes[newNumNBox].box.v[1].y = curY;
-						
 						nBoxes[newNumNBox].box.v[2].x = bEvents[curEvent].x1;
-						nBoxes[newNumNBox].box.v[2].y = curY;
-						
 						nBoxes[newNumNBox].box.v[3].x = nBoxes[n].box.v[0].x;
-						nBoxes[newNumNBox].box.v[3].y = curY;
+						
+						for(int n = 0; n < 4; n++) {
+							nBoxes[newNumNBox].box.v[n].y = curY;
+						}
 						
 						nBoxes[newNumNBox].active = true;
 						
@@ -246,16 +242,13 @@ void BuildNegativeBoxes() {
 					// Create a negative box on the right
 					if(createRight) {
 						nBoxes[newNumNBox].box.v[0].x = bEvents[curEvent].x2;
-						nBoxes[newNumNBox].box.v[0].y = curY;
-						
 						nBoxes[newNumNBox].box.v[1].x = nBoxes[n].box.v[1].x;
-						nBoxes[newNumNBox].box.v[1].y = curY;
-						
 						nBoxes[newNumNBox].box.v[2].x = nBoxes[n].box.v[1].x;
-						nBoxes[newNumNBox].box.v[2].y = curY;
-						
 						nBoxes[newNumNBox].box.v[3].x = bEvents[curEvent].x2;
-						nBoxes[newNumNBox].box.v[3].y = curY;
+						
+						for(int n = 0; n < 4; n++) {
+							nBoxes[newNumNBox].box.v[n].y = curY;
+						}
 						
 						nBoxes[newNumNBox].active = true;
 						
