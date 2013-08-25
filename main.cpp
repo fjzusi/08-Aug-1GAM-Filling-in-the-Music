@@ -1,7 +1,5 @@
 #include <hge.h>
 #include <hgerect.h>
-#include <stdlib.h>
-#include <time.h>
 #include <algorithm>
 
 using namespace std;
@@ -17,6 +15,12 @@ struct BoxEvent {
 	float x2;
 	float y;
 	bool isTop;
+	int pIndex;
+};
+
+struct NegativeBox {
+	hgeQuad box;
+	bool active;
 };
 
 struct CompareBoxEvents {
@@ -32,7 +36,7 @@ DWORD negativeColor = 0xFF000000;
 DWORD playerColor = 0xFF00FF00;
 
 hgeQuad pBoxes[ARRAY_SIZE];
-hgeQuad nBoxes[ARRAY_SIZE];
+NegativeBox nBoxes[ARRAY_SIZE];
 hgeQuad playBoxes[ARRAY_SIZE];
 
 BoxEvent bEvents[EVENT_ARRAY_SIZE];
@@ -56,9 +60,9 @@ void Initialize() {
 			pBoxes[i].v[j].y = 0;
 			pBoxes[i].v[j].col = positiveColor;
 			
-			nBoxes[i].v[j].x = 0;
-			nBoxes[i].v[j].y = 0;
-			nBoxes[i].v[j].col = negativeColor;
+			nBoxes[i].box.v[j].x = 0;
+			nBoxes[i].box.v[j].y = 0;
+			nBoxes[i].box.v[j].col = negativeColor;
 			
 			playBoxes[i].v[j].x = 0;
 			playBoxes[i].v[j].y = 0;
@@ -68,8 +72,8 @@ void Initialize() {
 		pBoxes[i].tex = 0;
 		pBoxes[i].blend = BLEND_DEFAULT;
 		
-		nBoxes[i].tex = 0;
-		nBoxes[i].blend = BLEND_DEFAULT;
+		nBoxes[i].box.tex = 0;
+		nBoxes[i].box.blend = BLEND_DEFAULT;
 		
 		playBoxes[i].tex = 0;
 		playBoxes[i].blend = BLEND_DEFAULT;
@@ -89,8 +93,9 @@ void ReInitialize() {
 			pBoxes[i].v[j].x = 0;
 			pBoxes[i].v[j].y = 0;
 			
-			nBoxes[i].v[j].x = 0;
-			nBoxes[i].v[j].y = 0;
+			nBoxes[i].box.v[j].x = 0;
+			nBoxes[i].box.v[j].y = 0;
+			nBoxes[i].active = false;
 			
 			playBoxes[i].v[j].x = 0;
 			playBoxes[i].v[j].y = 0;
@@ -99,8 +104,8 @@ void ReInitialize() {
 }
 
 void GeneratePositiveBox() {
-	int originX = rand() % (SPAWN_SIZE) + SPAWN_BORDER;
-	int originY = rand() % (SPAWN_SIZE) + SPAWN_BORDER;
+	int originX = hge->Random_Int(SPAWN_BORDER, SPAWN_BORDER + SPAWN_SIZE);
+	int originY = hge->Random_Int(SPAWN_BORDER, SPAWN_BORDER + SPAWN_SIZE);
 	
 	for(int i = 0; i < 4; i++) {
 		pBoxes[numPBox].v[i].x = originX;
@@ -111,7 +116,7 @@ void GeneratePositiveBox() {
 }
 
 void GrowPositiveBoxes() {
-	int growth = rand() % 10 + 10;
+	int growth = hge->Random_Int(10, 20);
 	
 	for(int i = 0; i < numPBox; i++) {
 		pBoxes[i].v[0].x = pBoxes[i].v[0].x - growth;
@@ -129,7 +134,7 @@ void GrowPositiveBoxes() {
 }
 
 void BuildPositiveBoxes() {
-	int numBoxes = rand() % 3 + 5;
+	int numBoxes = hge->Random_Int(5, 8);
 	while(numBoxes > 0) {
 		GeneratePositiveBox();
 		GrowPositiveBoxes();
@@ -142,11 +147,13 @@ void BuildBoxEvents() {
 		bEvents[numBEvents].x1 = pBoxes[i].v[0].x;
 		bEvents[numBEvents].x2 = pBoxes[i].v[1].x;
 		bEvents[numBEvents].y = pBoxes[i].v[0].y;
+		bEvents[numBEvents].pIndex = i;
 		bEvents[numBEvents].isTop = true;
 		
 		bEvents[numBEvents + 1].x1 = pBoxes[i].v[0].x;
 		bEvents[numBEvents + 1].x2 = pBoxes[i].v[1].x;
 		bEvents[numBEvents + 1].y = pBoxes[i].v[2].y;
+		bEvents[numBEvents + 1].pIndex = i;
 		bEvents[numBEvents + 1].isTop = false;
 		
 		numBEvents += 2;
@@ -155,10 +162,115 @@ void BuildBoxEvents() {
 	std::sort(bEvents, bEvents + numBEvents, CompareBoxEvents());
 }
 
+bool CheckBoxAndEvent(NegativeBox* box, BoxEvent* event) {
+	//TODO Return whether the box intersects with the event
+	return false;
+}
+
+bool CheckPoint(float px, float py, float rx1, float ry1, float rx2, float ry2, float rx3, float ry3, float rx4, float ry4) {
+	//TODO Return whether the point at px-py is contained within the rectangle
+	return false;
+}
+
 void BuildNegativeBoxes() {
-	int curY = 0;
+	float curY = 0;
 	int curEvent = 0;
-	//TODO BuildNegativeBoxes()
+	nBoxes[0].active = true;
+	numNBox = 1;
+	int newNumNBox = 1;
+	
+	while(curY < GAME_SIZE && curEvent < numBEvents) {
+		// Bring active boxes down to the next event
+		for(int n = 0; n < numNBox; n++) {
+			if(nBoxes[n].active) {
+				nBoxes[n].box.v[2].y = bEvents[curEvent].y;
+				nBoxes[n].box.v[3].y = bEvents[curEvent].y;
+			}
+		}
+		
+		if(bEvents[curEvent].isTop) {
+			// Collided with the top of a positive box
+			for(int n = 0; n < numNBox; n++) {
+				if(nBoxes[n].active && CheckBoxAndEvent(&nBoxes[n], &bEvents[curEvent])) {
+					bool createLeft = true;
+					bool createRight = true;
+					nBoxes[n].active = false;
+					
+					// Check Left Vertex
+					for(int j = 0; j < numPBox && createLeft; j++) {
+						if(j != bEvents[curEvent].pIndex &&
+							CheckPoint(
+								bEvents[curEvent.x1], bEvents[curEvent.y],
+								pBoxes[j].v[0].x, pBoxes[j].v[0].y,
+								pBoxes[j].v[1].x, pBoxes[j].v[1].y,
+								pBoxes[j].v[2].x, pBoxes[j].v[2].y,
+								pBoxes[j].v[3].x, pBoxes[j].v[3].y,)
+						) {
+							createLeft = false;
+						}
+					}
+					
+					// Check Right Vertex
+					for(int j = 0; j < numPBox && createRight; j++) {
+						if(j != bEvents[curEvent].pIndex &&
+							CheckPoint(
+								bEvents[curEvent.x2], bEvents[curEvent.y],
+								pBoxes[j].v[0].x, pBoxes[j].v[0].y,
+								pBoxes[j].v[1].x, pBoxes[j].v[1].y,
+								pBoxes[j].v[2].x, pBoxes[j].v[2].y,
+								pBoxes[j].v[3].x, pBoxes[j].v[3].y,)
+						) {
+							createRight = false;
+						}
+					}
+					
+					// Create a negative box on the left
+					if(createLeft) {
+						nBoxes[newNumNBox].box.v[0].x = nBoxes[n].box.v[0].x;
+						nBoxes[newNumNBox].box.v[0].y = curY;
+						
+						nBoxes[newNumNBox].box.v[1].x = bEvents[curEvent].x1;
+						nBoxes[newNumNBox].box.v[1].y = curY;
+						
+						nBoxes[newNumNBox].box.v[2].x = bEvents[curEvent].x1;
+						nBoxes[newNumNBox].box.v[2].y = curY;
+						
+						nBoxes[newNumNBox].box.v[3].x = nBoxes[n].box.v[0].x;
+						nBoxes[newNumNBox].box.v[3].y = curY;
+						
+						nBoxes[newNumNBox].active = true;
+						
+						newNumNBox++;
+					}
+					
+					// Create a negative box on the right
+					if(createRight) {
+						nBoxes[newNumNBox].box.v[0].x = bEvents[curEvent].x2;
+						nBoxes[newNumNBox].box.v[0].y = curY;
+						
+						nBoxes[newNumNBox].box.v[1].x = nBoxes[n].box.v[1].x;
+						nBoxes[newNumNBox].box.v[1].y = curY;
+						
+						nBoxes[newNumNBox].box.v[2].x = nBoxes[n].box.v[1].x;
+						nBoxes[newNumNBox].box.v[2].y = curY;
+						
+						nBoxes[newNumNBox].box.v[3].x = bEvents[curEvent].x2;
+						nBoxes[newNumNBox].box.v[3].y = curY;
+						
+						nBoxes[newNumNBox].active = true;
+						
+						newNumNBox++;
+					}
+				}
+			}
+		} else {
+			// Collided with the bottom of a positive box
+		}
+		
+		numNBox = newNumNBox;
+		curY = bEvents[curEvent].y;
+		curEvent++;
+	}
 }
 
 void BuildLevel() {
@@ -208,7 +320,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	hge->System_SetState(HGE_HIDEMOUSE, false);
 
 	if(hge->System_Initiate()) {
-		srand(time(NULL));
+		hge->Random_Seed();
 		Initialize();
 		BuildLevel();
 		hge->System_Start();
