@@ -179,11 +179,14 @@ void BuildNegativeBoxes() {
 	float curY = 0;
 	int curEvent = 0;
 	nBoxes[0].active = true;
+	nBoxes[0].box.v[1].x = GAME_SIZE;
+	nBoxes[0].box.v[2].x = GAME_SIZE;
 	numNBox = 1;
 	int newNumNBox = 1;
 	
 	while(curY < GAME_SIZE && curEvent < numBEvents) {
 		// Bring active boxes down to the next event
+		curY = bEvents[curEvent].y;
 		for(int n = 0; n < numNBox; n++) {
 			if(nBoxes[n].active) {
 				nBoxes[n].box.v[2].y = bEvents[curEvent].y;
@@ -200,6 +203,7 @@ void BuildNegativeBoxes() {
 					nBoxes[n].active = false;
 					
 					// Check Left Vertex
+					createLeft = nBoxes[n].box.v[0].x <= bEvents[curEvent].x1;
 					for(int j = 0; j < numPBox && createLeft; j++) {
 						if(j != bEvents[curEvent].pIndex &&
 							CheckPoint(
@@ -212,6 +216,7 @@ void BuildNegativeBoxes() {
 					}
 					
 					// Check Right Vertex
+					createRight = nBoxes[n].box.v[1].x >= bEvents[curEvent].x2;
 					for(int j = 0; j < numPBox && createRight; j++) {
 						if(j != bEvents[curEvent].pIndex &&
 							CheckPoint(
@@ -258,10 +263,29 @@ void BuildNegativeBoxes() {
 			}
 		} else {
 			// Collided with the bottom of a positive box
+			float leftX = GAME_SIZE;
+			float rightX = 0;
+			
+			// Terminate Active boxes and determine boundaries of event
+			for(int n = 0; n < numNBox; n++) {
+				if(nBoxes[n].active && CheckBoxAndEvent(nBoxes[n], bEvents[curEvent])) {
+					nBoxes[n].active = false;
+					
+					if(leftX > nBoxes[n].box.v[0].x) {
+						leftX = nBoxes[n].box.v[0].x;
+					}
+					
+					if(rightX < nBoxes[n].box.v[1].x) {
+						rightX = nBoxes[n].box.v[1].x;
+					}
+				}
+			}
+			
+			// Now we have a line between leftX and rightX at curY
+			
 		}
 		
 		numNBox = newNumNBox;
-		curY = bEvents[curEvent].y;
 		curEvent++;
 	}
 }
@@ -292,6 +316,28 @@ bool Render() {
 	
 	for(int i = 0; i < numPBox; i++) {
 		hge->Gfx_RenderQuad(&pBoxes[i]);
+		
+		hge->Gfx_RenderLine(
+			pBoxes[i].v[0].x, pBoxes[i].v[0].y,
+			pBoxes[i].v[2].x, pBoxes[i].v[2].y,
+			0xFFFF0000);
+			
+		hge->Gfx_RenderLine(
+			pBoxes[i].v[1].x, pBoxes[i].v[1].y,
+			pBoxes[i].v[3].x, pBoxes[i].v[3].y,
+			0xFFFF0000);
+	}
+	
+	for(int j = 0; j < numNBox; j++) {
+		hge->Gfx_RenderLine(
+			nBoxes[j].box.v[0].x, nBoxes[j].box.v[0].y,
+			nBoxes[j].box.v[2].x, nBoxes[j].box.v[2].y,
+			0xFFFFFFFF);
+			
+		hge->Gfx_RenderLine(
+			nBoxes[j].box.v[1].x, nBoxes[j].box.v[1].y,
+			nBoxes[j].box.v[3].x, nBoxes[j].box.v[3].y,
+			0xFFFFFFFF);
 	}
 	
 	hge->Gfx_EndScene();
