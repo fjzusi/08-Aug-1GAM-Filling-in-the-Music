@@ -135,6 +135,7 @@ void GrowPositiveBoxes() {
 
 void BuildPositiveBoxes() {
 	int numBoxes = hge->Random_Int(5, 8);
+	numBoxes = 3;
 	while(numBoxes > 0) {
 		GeneratePositiveBox();
 		GrowPositiveBoxes();
@@ -162,7 +163,7 @@ void BuildBoxEvents() {
 	std::sort(bEvents, bEvents + numBEvents, CompareBoxEvents());
 }
 
-bool CheckBoxAndEvent(NegativeBox nBox, BoxEvent event) {
+bool CheckBoxAndEvent(NegativeBox& nBox, BoxEvent& event) {
 	if(nBox.box.v[2].y == event.y) {
 		return (nBox.box.v[3].x <= event.x1 && nBox.box.v[2].x >= event.x1) ||
 			(nBox.box.v[3].x <= event.x2 && nBox.box.v[2].x >= event.x2);
@@ -173,6 +174,14 @@ bool CheckBoxAndEvent(NegativeBox nBox, BoxEvent event) {
 
 bool CheckPoint(float px, float py, float leftX, float rightX, float topY, float bottomY) {
 	return px >= leftX && px <= rightX && py >= topY && py <= bottomY;
+}
+
+bool CheckLine(float lx1, float lx2, float ly, float leftX, float rightX, float topY, float bottomY) {
+	if(ly > topY && ly < bottomY) {
+		return lx1 <= rightX && lx2 >= leftX;
+	}
+	
+	return false;
 }
 
 void BuildNegativeBoxes() {
@@ -263,30 +272,85 @@ void BuildNegativeBoxes() {
 			}
 		} else {
 			// Collided with the bottom of a positive box
-			float leftX = GAME_SIZE;
-			float rightX = 0;
+			float leftX = 0;
+			float rightX = GAME_SIZE;
 			
 			// Terminate Active boxes and determine boundaries of event
 			for(int n = 0; n < numNBox; n++) {
-				if(nBoxes[n].active && CheckBoxAndEvent(nBoxes[n], bEvents[curEvent])) {
+				if(nBoxes[n].active) {
 					nBoxes[n].active = false;
-					
-					if(leftX > nBoxes[n].box.v[0].x) {
-						leftX = nBoxes[n].box.v[0].x;
-					}
-					
-					if(rightX < nBoxes[n].box.v[1].x) {
-						rightX = nBoxes[n].box.v[1].x;
-					}
 				}
 			}
 			
 			// Now we have a line between leftX and rightX at curY
+			float leftBoxX = -1;
+			float rightBoxX = -1;
+			bool collides;
+			bool boxCreated = false;
+			for(float x = leftX; x <= rightX; x++) {
+				collides = false;
+				
+				for(int p = 0; p < numPBox; p++) {
+					if(CheckPoint(x, curY + 1, pBoxes[p].v[0].x, pBoxes[p].v[1].x, pBoxes[p].v[0].y, pBoxes[p].v[2].y)) {
+						collides = true;
+					}
+				}
+				
+				if(leftBoxX == -1 && !collides) {
+					leftBoxX = x;
+				}
+				
+				if(rightBoxX == -1 && collides) {
+					rightBoxX = x;
+				}
+				
+				if(leftBoxX > -1 && rightBoxX > -1) {
+					nBoxes[newNumNBox].box.v[0].x = leftBoxX;
+					nBoxes[newNumNBox].box.v[1].x = rightBoxX;
+					nBoxes[newNumNBox].box.v[2].x = rightBoxX;
+					nBoxes[newNumNBox].box.v[3].x = leftBoxX;
+					
+					for(int n = 0; n < 4; n++) {
+						nBoxes[newNumNBox].box.v[n].y = curY;
+					}
+					
+					nBoxes[newNumNBox].active = true;
+					
+					newNumNBox++;
+					leftBoxX = -1;
+					rightBoxX = -1;
+					boxCreated = true;
+				}
+			}
 			
+			// There weren't any boxes on the line, just build a new big one
+			if(!boxCreated) {
+				nBoxes[newNumNBox].box.v[0].x = 0;
+				nBoxes[newNumNBox].box.v[1].x = GAME_SIZE;
+				nBoxes[newNumNBox].box.v[2].x = GAME_SIZE;
+				nBoxes[newNumNBox].box.v[3].x = 0;
+				
+				for(int n = 0; n < 4; n++) {
+					nBoxes[newNumNBox].box.v[n].y = curY;
+				}
+				
+				nBoxes[newNumNBox].active = true;
+				
+				newNumNBox++;
+			}
 		}
 		
 		numNBox = newNumNBox;
 		curEvent++;
+	}
+	
+	// Extend any remaining active boxes to the bottom
+	for(int n = 0; n < numNBox; n++) {
+		if(nBoxes[n].active) {
+			nBoxes[n].box.v[2].y = GAME_SIZE;
+			nBoxes[n].box.v[3].y = GAME_SIZE;
+			nBoxes[n].active = false;
+		}
 	}
 }
 
