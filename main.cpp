@@ -9,6 +9,7 @@ const int EVENT_ARRAY_SIZE = 100;
 const int GAME_SIZE = 400;
 const int SPAWN_SIZE = 150;
 const int SPAWN_BORDER = 125;
+const float GROW_SPEED = 20;
 
 struct BoxEvent {
 	float x1;
@@ -45,6 +46,10 @@ int numPBox = 0;
 int numNBox = 0;
 int numPlayBox = 0;
 int numBEvents = 0;
+
+float gameScore = 0;
+
+bool gameWon = false;
 
 // Initialize Game for initial load
 void Initialize() {
@@ -181,6 +186,13 @@ bool CheckLine(float lx1, float lx2, float ly, float leftX, float rightX, float 
 	}
 	
 	return false;
+}
+
+bool CheckQuad(hgeQuad& q1, hgeQuad& q2) {
+	hgeRect r1(q1.v[0].x, q1.v[0].y, q1.v[2].x, q1.v[2].y);
+	hgeRect r2(q2.v[0].x, q2.v[0].y, q2.v[2].x, q2.v[2].y);
+	
+	return r1.Intersect(&r2);
 }
 
 void BuildNegativeBoxes() {
@@ -357,46 +369,106 @@ void BuildLevel() {
 	canClick = true;
 }
 
+void ProcessClick() {
+	if(hge->Input_KeyDown(HGEK_LBUTTON)) {
+		float x;
+		float y;
+		hge->Input_GetMousePos(&x, &y);
+		bool spaceFree = true;
+		
+		for(int n = 0; n < numNBox; n++) {
+			if(CheckPoint(x, y, nBoxes[n].box.v[0].x, nBoxes[n].box.v[1].x, nBoxes[n].box.v[0].y, nBoxes[n].box.v[2].y)) {
+				spaceFree = false;
+			}
+		}
+		
+		if(spaceFree) {
+			for(int i = 0; i < 4; i++) {
+				playBoxes[numPlayBox].v[i].x = x;
+				playBoxes[numPlayBox].v[i].y = y;
+			}
+			
+			numPlayBox++;
+		}
+	}
+}
+
+void UpdatePlayerBoxes() {
+	float amount = GROW_SPEED * hge->Timer_GetDelta();
+	
+	for(int pl = 0; pl < numPlayBox; pl++) {
+		playBoxes[pl].v[0].x -= amount;
+		playBoxes[pl].v[0].y -= amount;
+		
+		playBoxes[pl].v[1].x += amount;
+		playBoxes[pl].v[1].y -= amount;
+		
+		playBoxes[pl].v[2].x += amount;
+		playBoxes[pl].v[2].y += amount;
+		
+		playBoxes[pl].v[3].x -= amount;
+		playBoxes[pl].v[3].y += amount;
+	}
+}
+
+void CheckPlayerCollision() {
+	for(int pl = 0; pl < numPlayBox; pl++) {
+		for(int n = 0; n < numNBox; n++) {
+			if(CheckQuad(playBoxes[pl], nBoxes[n].box)) {
+				gameWon = true;
+			}
+		}
+	}
+}
+
+void ProcessGameWinningClick() {
+	if(hge->Input_KeyDown(HGEK_LBUTTON)) {
+		gameWon = false;
+		BuildLevel();
+	}
+}
+
 bool Update() {
 	if (hge->Input_GetKeyState(HGEK_ESCAPE)){
 		return true;
 	}
 	
-	if(hge->Input_KeyDown(HGEK_LBUTTON)) {
-		BuildLevel();
+	if(gameWon) {
+		ProcessGameWinningClick();
+	} else {
+		ProcessClick();
+		UpdatePlayerBoxes();
+		CheckPlayerCollision();
 	}
 	
 	return false;
+}
+
+void RenderPositiveBoxes() {
+	for(int i = 0; i < numPBox; i++) {
+		hge->Gfx_RenderQuad(&pBoxes[i]);
+	}
+}
+
+void RenderPlayerBoxes() {
+	for(int i = 0; i < numPlayBox; i++) {
+		hge->Gfx_RenderQuad(&playBoxes[i]);
+	}
+}
+
+void RenderScore() {
+	//TODO
 }
 
 bool Render() {
 	hge->Gfx_BeginScene();
 	hge->Gfx_Clear(0);
 	
-	for(int i = 0; i < numPBox; i++) {
-		hge->Gfx_RenderQuad(&pBoxes[i]);
-		
-		hge->Gfx_RenderLine(
-			pBoxes[i].v[0].x, pBoxes[i].v[0].y,
-			pBoxes[i].v[2].x, pBoxes[i].v[2].y,
-			0xFFFF0000);
-			
-		hge->Gfx_RenderLine(
-			pBoxes[i].v[1].x, pBoxes[i].v[1].y,
-			pBoxes[i].v[3].x, pBoxes[i].v[3].y,
-			0xFFFF0000);
-	}
+	RenderPositiveBoxes();
+	RenderPlayerBoxes();
 	
-	for(int j = 0; j < numNBox; j++) {
-		hge->Gfx_RenderLine(
-			nBoxes[j].box.v[0].x, nBoxes[j].box.v[0].y,
-			nBoxes[j].box.v[2].x, nBoxes[j].box.v[2].y,
-			0xFFFFFFFF);
-			
-		hge->Gfx_RenderLine(
-			nBoxes[j].box.v[1].x, nBoxes[j].box.v[1].y,
-			nBoxes[j].box.v[3].x, nBoxes[j].box.v[3].y,
-			0xFFFFFFFF);
+	if(gameWon) {
+		RenderScore();
 	}
 	
 	hge->Gfx_EndScene();
