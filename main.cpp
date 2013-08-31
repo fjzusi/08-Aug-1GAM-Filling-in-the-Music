@@ -47,6 +47,7 @@ int numNBox = 0;
 int numPlayBox = 0;
 int numBEvents = 0;
 
+float negativeArea = 0;
 float gameScore = 0;
 
 bool gameWon = false;
@@ -361,16 +362,28 @@ void BuildNegativeBoxes() {
 	}
 }
 
+void CalculateNegativeArea() {
+	negativeArea = 0;
+	
+	for(int n = 0; n < numNBox; n++) {
+		float width = nBoxes[n].box.v[1].x - nBoxes[n].box.v[0].x;
+		float height = nBoxes[n].box.v[2].y - nBoxes[n].box.v[0].y;
+		
+		negativeArea += width * height;
+	}
+}
+
 void BuildLevel() {
 	Initialize();
 	BuildPositiveBoxes();
 	BuildBoxEvents();
 	BuildNegativeBoxes();
+	CalculateNegativeArea();
 	canClick = true;
 }
 
 void ProcessClick() {
-	if(hge->Input_KeyDown(HGEK_LBUTTON)) {
+	if(canClick && hge->Input_KeyDown(HGEK_LBUTTON)) {
 		float x;
 		float y;
 		hge->Input_GetMousePos(&x, &y);
@@ -419,6 +432,24 @@ void CheckPlayerCollision() {
 			}
 		}
 	}
+	
+	if(gameWon) {
+		int coveredArea = 0;
+		float totalArea = GAME_SIZE * GAME_SIZE;
+		float positiveArea = totalArea - negativeArea;
+		
+		for(int x = 0; x < GAME_SIZE; x++) {
+			for(int y = 0; y < GAME_SIZE; y++) {
+				for(int n = 0; n < numPlayBox; n++) {
+					if(!CheckPoint(x, y, playBoxes[n].v[0].x, playBoxes[n].v[1].x, playBoxes[n].v[0].y, playBoxes[n].v[2].y)){
+						coveredArea++;
+					}
+				}
+			}	
+		}
+		
+		gameScore = positiveArea / coveredArea * 100;
+	}
 }
 
 void ProcessGameWinningClick() {
@@ -457,6 +488,10 @@ void RenderPlayerBoxes() {
 }
 
 void RenderScore() {
+	//draw gameScore
+	
+	
+	
 	//TODO
 }
 
