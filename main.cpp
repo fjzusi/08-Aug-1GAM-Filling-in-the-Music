@@ -1,5 +1,6 @@
 #include <hge.h>
 #include <hgerect.h>
+#include <hgefont.h>
 #include <algorithm>
 
 using namespace std;
@@ -35,6 +36,7 @@ bool canClick = false;
 DWORD positiveColor = 0xFF009496;
 DWORD negativeColor = 0xFF000000;
 DWORD playerColor = 0xFF00FF00;
+DWORD gameFontColor = 0xFFFFFFFF;
 
 hgeQuad pBoxes[ARRAY_SIZE];
 NegativeBox nBoxes[ARRAY_SIZE];
@@ -88,6 +90,9 @@ void Initialize() {
 
 // Initialize for a new level
 void ReInitialize() {
+	hge->System_SetState(HGE_TITLE, "Filling in the Music");
+	gameWon = false;
+	
 	canClick = false;
 	numPBox = 0;
 	numNBox = 0;
@@ -374,7 +379,7 @@ void CalculateNegativeArea() {
 }
 
 void BuildLevel() {
-	Initialize();
+	ReInitialize();
 	BuildPositiveBoxes();
 	BuildBoxEvents();
 	BuildNegativeBoxes();
@@ -488,11 +493,7 @@ void RenderPlayerBoxes() {
 }
 
 void RenderScore() {
-	//draw gameScore
-	
-	
-	
-	//TODO
+	hge->System_SetState(HGE_TITLE, "Game Won");
 }
 
 bool Render() {
