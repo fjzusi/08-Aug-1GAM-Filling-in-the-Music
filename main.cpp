@@ -135,7 +135,6 @@ void GrowPositiveBoxes() {
 
 void BuildPositiveBoxes() {
 	int numBoxes = hge->Random_Int(5, 8);
-	numBoxes = 3;
 	while(numBoxes > 0) {
 		GeneratePositiveBox();
 		GrowPositiveBoxes();
@@ -272,9 +271,6 @@ void BuildNegativeBoxes() {
 			}
 		} else {
 			// Collided with the bottom of a positive box
-			float leftX = 0;
-			float rightX = GAME_SIZE;
-			
 			// Terminate Active boxes and determine boundaries of event
 			for(int n = 0; n < numNBox; n++) {
 				if(nBoxes[n].active) {
@@ -282,12 +278,11 @@ void BuildNegativeBoxes() {
 				}
 			}
 			
-			// Now we have a line between leftX and rightX at curY
 			float leftBoxX = -1;
 			float rightBoxX = -1;
 			bool collides;
 			bool boxCreated = false;
-			for(float x = leftX; x <= rightX; x++) {
+			for(float x = 0; x <= GAME_SIZE; x++) {
 				collides = false;
 				
 				for(int p = 0; p < numPBox; p++) {
@@ -300,7 +295,7 @@ void BuildNegativeBoxes() {
 					leftBoxX = x;
 				}
 				
-				if(rightBoxX == -1 && collides) {
+				if(x == GAME_SIZE || (leftBoxX > -1 && rightBoxX == -1 && collides)) {
 					rightBoxX = x;
 				}
 				
